@@ -1,0 +1,686 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#f5f5f0" />
+  <title>VowelScope — Real-Time IPA Vowel Chart</title>
+  <link rel="stylesheet" href="../reference-player.css" />
+  <style>
+    :root{font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC",sans-serif;color:#202c30;background:#f5f5f0;font-synthesis:none}
+    *{box-sizing:border-box}
+    body{margin:0;min-width:320px}
+    button,input{font:inherit}
+    button{cursor:pointer}
+    .shell{max-width:1340px;margin:0 auto;padding:32px 30px 46px}
+    .site-header{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:27px}
+    .brand{display:flex;align-items:center;gap:13px}
+    .logo{height:45px;width:45px;display:grid;place-items:center;border-radius:13px;background:#194b4a;color:white;box-shadow:0 5px 18px #1e4a4530}
+    .brand h1{margin:0;font-size:26px;line-height:1.05;font-weight:730;letter-spacing:-1px}
+    .brand p{margin:6px 0 0;color:#788381;font-size:12px;letter-spacing:.03em}
+    .header-tools{display:flex;align-items:center;justify-content:flex-end;gap:12px;flex-wrap:wrap}
+    .locale-switch{color:#196b57;border:1px solid #c9dfd4;padding:7px 10px;border-radius:9px;text-decoration:none;font-size:12px;font-weight:750;background:#f4faf6;white-space:nowrap}
+    .locale-switch:hover{background:#e8f6ee}
+    .header-info{display:flex;align-items:center;gap:9px;color:#66736f;font-size:12px}
+    .privacy-dot{height:7px;width:7px;background:#549b88;border-radius:50%}
+    .eyebrow{font-size:12px;letter-spacing:.13em;font-weight:700;text-transform:uppercase;color:#567b76}
+    .intro{display:flex;justify-content:space-between;align-items:end;gap:30px;margin-bottom:23px}
+    .intro h2{margin:9px 0 7px;font-size:clamp(25px,3.5vw,38px);letter-spacing:-1.4px;line-height:1.25;font-weight:710}
+    .intro p{margin:0;color:#64716f;font-size:14px;line-height:1.7}
+    .intro-right{font-size:12px;color:#71807c;max-width:240px;line-height:1.65;text-align:right}
+    .app-grid{display:grid;grid-template-columns:minmax(0,1.85fr) minmax(295px,0.85fr);gap:17px;align-items:start}
+    .panel{background:#fff;border:1px solid #e6e9e6;border-radius:20px;box-shadow:0 12px 30px rgba(36,57,49,.035)}
+    .chart-panel{padding:23px 26px 18px}
+    .panel-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px}
+    .panel-title{font-size:17px;font-weight:710;letter-spacing:-.45px;margin:0}
+    .subtle{color:#8a9994;font-size:12px}
+    .status{display:inline-flex;gap:7px;align-items:center;border:1px solid #e5eae7;border-radius:40px;padding:7px 11px;font-size:11px;font-weight:700;color:#6a7773;white-space:nowrap;background:#f9fbfa}
+    .status-dot{height:7px;width:7px;border-radius:50%;background:#aeb9b3}
+    .status.live{border-color:#c9e9d8;color:#28765f;background:#f3fbf6}
+    .status.live .status-dot{background:#36a177;box-shadow:0 0 0 4px #d8f4e7}
+    .status.frozen{border-color:#ecddc7;color:#9a6c33;background:#fffaf2}
+    .status.frozen .status-dot{background:#dca554}
+    .chart-wrap{width:100%;background:#fafbf9;border:1px solid #edf0ed;border-radius:12px;overflow:hidden;position:relative}
+    canvas#vowelChart{display:block;width:100%;aspect-ratio:1.33;height:auto;touch-action:pan-y}
+    .chart-placeholder{position:absolute;top:48%;left:50%;transform:translate(-50%,-50%);background:#ffffffed;border:1px solid #e3e7e2;border-radius:13px;padding:14px 20px;box-shadow:0 10px 25px #102d2417;color:#5b7770;text-align:center;pointer-events:none;white-space:nowrap;transition:opacity .25s}
+    .chart-placeholder small{display:block;font-size:11px;color:#8c9993;margin-top:5px}
+    .chart-caption{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-top:14px;color:#74817d;font-size:11px}
+    .swatch{width:8px;height:8px;display:inline-block;border-radius:50%;margin-right:6px;vertical-align:middle}
+    .chart-legend{display:flex;gap:16px;flex-wrap:wrap}
+    .controls{display:flex;flex-direction:column;gap:16px}
+    .control-panel{padding:22px}
+    .microphone-bar{display:flex;align-items:center;gap:12px;background:#f5f8f6;padding:14px;border:1px solid #ebf0ec;border-radius:13px;margin:18px 0 14px}
+    .mic-icon{height:39px;width:39px;border-radius:10px;display:grid;place-items:center;background:white;color:#326b60;flex-shrink:0}
+    .mic-bar-label{font-size:13px;font-weight:700}
+    .mic-bar-detail{color:#93a19a;font-size:11px;margin-top:4px}
+    .level{height:5px;background:#dce7df;border-radius:10px;margin-top:9px;overflow:hidden}
+    .level>div{width:0%;height:100%;background:linear-gradient(90deg,#4ca394,#7bc3ab);border-radius:10px;transition:width .06s linear}
+    .primary{width:100%;background:#205f55;color:white;border:1px solid #205f55;min-height:47px;border-radius:11px;font-size:14px;font-weight:730;transition:background .2s,transform .2s}
+    .primary:hover{background:#184e46}
+    .primary:active{transform:scale(.985)}
+    .primary.stop{background:#8d4c41;border-color:#8d4c41}
+    .primary.stop:hover{background:#743d35}
+    .button-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:9px}
+    .secondary{min-height:38px;background:white;border:1px solid #e2e9e4;border-radius:9px;color:#55736b;font-size:12px;font-weight:650}
+    .secondary:hover{background:#f6faf7}
+    .secondary:disabled{opacity:.42;cursor:not-allowed}
+    .detected-panel{padding:22px}
+    .reading{display:flex;align-items:center;justify-content:space-between;margin-top:15px;padding-bottom:13px;border-bottom:1px solid #edf0eb}
+    .ipa-symbol{font-size:62px;line-height:1;font-weight:500;font-family:"Charis SIL","Noto Sans", "Times New Roman",serif;letter-spacing:-2px;color:#245f56}
+    .reading-info{text-align:right;max-width:170px}
+    .reading-info strong{font-size:12px;display:block;margin-bottom:7px}
+    .reading-info span{font-size:11px;color:#9ca7a3;line-height:1.5;display:block}
+    .metric-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:16px}
+    .metric{background:#f8f9f7;border:1px solid #f1f3ef;border-radius:11px;padding:11px 9px;min-width:0}
+    .metric>span{display:block;font-size:10px;color:#87958e;margin-bottom:9px;letter-spacing:.07em}
+    .metric>strong{font-size:18px;font-weight:750;letter-spacing:-.7px;white-space:nowrap;display:block}
+    .metric small{font-size:10px;font-weight:500;color:#97a09d}
+    .setting-panel{padding:22px}
+    .tracking-mode{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:9px}
+    .tracking-option{background:#f8faf8;border:1px solid #dfe8e1;border-radius:9px;color:#60796b;font-size:12px;font-weight:700;min-height:43px;padding:8px 6px}
+    .tracking-option.active{background:#205f55;border-color:#205f55;color:white}
+    .tracking-option:focus-visible{outline:3px solid #9ad6bf;outline-offset:2px}
+    .setting-row{display:flex;justify-content:space-between;align-items:center;margin:19px 0 9px}
+    .setting-row label{font-size:12px;font-weight:680}
+    .setting-row output{color:#7e918b;font-size:11px}
+    input[type=range]{width:100%;accent-color:#2d8071;height:4px;cursor:pointer}
+    .help-text{font-size:11px;color:#91a09b;line-height:1.6;margin-top:9px}
+    .target-panel{padding:20px 22px}
+    .target-buttons{display:flex;flex-wrap:wrap;gap:7px;margin-top:14px;max-height:235px;overflow:auto;padding-bottom:3px}
+    .target{background:#f7faf8;border:1px solid #e5ece7;border-radius:9px;min-width:38px;padding:7px 10px;color:#53746d;font-family:"Charis SIL","Noto Sans", "Times New Roman",serif;font-size:19px}
+    .target.active{background:#dceee6;border-color:#8fc1a8;color:#155849}
+    .target-explanation{font-size:11px;color:#879891;margin:12px 0 0;line-height:1.6}
+    .profile-picker{margin:0 0 16px;padding:15px 16px;border:1px solid #e6ede8;border-radius:13px;background:#f8faf8}
+    .profile-header{font-size:11px;color:#648176;font-weight:800;letter-spacing:.08em;text-transform:uppercase;margin-bottom:11px}
+    .profile-header span{font-size:10px;letter-spacing:0;text-transform:none;font-weight:500;color:#94a39a;margin-left:7px}
+    .compare-selectors{display:grid;gap:11px}
+    .profile-group{padding:11px 12px 12px;border:1px solid #e1eae4;border-radius:12px;background:#fff}
+    .profile-group-title{display:flex;align-items:center;gap:8px;margin-bottom:9px;font-size:12px}
+    .profile-group-title strong{font-size:12px}
+    .profile-group-title .chosen{margin-left:auto;font-size:11px;color:#738e80;font-weight:650}
+    .profile-letter{display:grid;place-items:center;width:23px;height:23px;border-radius:7px;color:#fff;font-size:12px;font-weight:800}
+    .profile-letter.a{background:#217d62}.profile-letter.b{background:#3475c5}
+    .profile-buttons{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+    .profile-btn{border:1px solid #e1e8e3;border-radius:8px;padding:8px 4px;min-height:37px;background:#fbfcfa;color:#596f66;font-size:12px;font-weight:650}
+    .profile-btn:hover{background:#edf6f1}
+    .profile-btn.active-a{background:#217d62;border-color:#217d62;color:#fff}
+    .profile-btn.active-b{background:#3475c5;border-color:#3475c5;color:#fff}
+    .profile-explainer{margin-top:15px;padding:14px 16px;border-radius:12px;background:#f7faf8;border:1px solid #e5eee7}
+    .profile-topline{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+    .profile-topline strong{font-size:13px}
+    .profile-topline span{color:#728a80;font-size:11px;font-weight:700}
+    .profile-explainer p{margin:8px 0 10px;color:#60756a;font-size:11px;line-height:1.7}
+    .compare-results{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-top:12px}
+    .compare-column{background:#fff;border:1px solid #e8ece9;border-radius:9px;padding:10px;min-width:0}
+    .compare-column .compare-caption{font-size:11px;font-weight:750;display:flex;justify-content:space-between;gap:5px;align-items:center;margin-bottom:8px}
+    .compare-column.a .compare-caption{color:#217d62}
+    .compare-column.shared .compare-caption{color:#7659ac}
+    .compare-column.b .compare-caption{color:#3475c5}
+    .profile-inventory{display:flex;gap:5px;flex-wrap:wrap;min-height:28px;align-content:start}
+    .phoneme-chip{min-width:28px;border:1px solid #add9c2;border-radius:7px;background:#eaf7ef;color:#176b54;font:600 17px "Charis SIL","Times New Roman",serif;padding:4px 6px;text-align:center}
+    .phoneme-chip.b{background:#eaf2ff;color:#2b68af;border-color:#abc8ef}
+    .phoneme-chip.shared{background:#f0ebfc;color:#7252a6;border-color:#c9b8e9}
+    .phoneme-empty{font-size:12px;color:#a1ada6}
+    .profile-extras{white-space:pre-line;font-size:11px!important;color:#819089!important;margin-bottom:0!important}
+    .profile-legend{font-size:11px;color:#71887b;margin-top:10px;line-height:1.8}
+    @media(max-width:620px){.site-header{flex-wrap:wrap}.header-tools{justify-content:flex-start;gap:8px}}
+    @media(max-width:620px){.profile-picker{padding:12px}.profile-header span{display:block;margin:3px 0 0}.profile-group{padding:9px}.profile-btn{font-size:11px;padding:7px 1px;min-height:38px}.profile-explainer{padding:12px}.compare-results{gap:5px}.compare-column{padding:7px 5px}.compare-column .compare-caption{font-size:10px;display:block}.phoneme-chip{font-size:15px;min-width:25px;padding:4px}.profile-topline{gap:5px}}
+    .notes{margin-top:17px;padding:19px 23px;border-radius:16px;border:1px solid #e5e8e2;background:#fdfdfb;display:flex;gap:16px;align-items:flex-start}
+    .notes .icon{height:36px;width:36px;border-radius:10px;display:grid;place-items:center;background:#edf5ef;color:#457569;flex-shrink:0}
+    .notes strong{font-size:13px}
+    .notes p{font-size:12px;color:#788882;line-height:1.75;margin:7px 0 0}
+    .footer{display:flex;justify-content:space-between;gap:12px;font-size:11px;color:#9aa69f;margin-top:25px}
+    .error{font-size:12px;line-height:1.6;color:#9a453b;min-height:0;margin-top:10px;white-space:pre-wrap}
+    :focus-visible{outline:3px solid #9ad6bf;outline-offset:2px}
+    @media(max-width:1000px){.app-grid{grid-template-columns:1fr}.controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.control-panel,.detected-panel,.setting-panel,.target-panel{height:100%}}
+    @media(max-width:620px){.shell{padding:20px 13px 32px}.site-header{margin-bottom:23px}.brand h1{font-size:22px}.intro{display:block}.intro h2{font-size:26px}.intro-right{display:none}.chart-panel{padding:16px 12px}.panel-head{padding:0 5px}.panel-title{font-size:15px}.chart-caption{display:block;line-height:1.8}.controls{display:flex}.metric>strong{font-size:17px}.footer{flex-direction:column}.header-info{font-size:10px}}
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="site-header">
+      <div class="brand">
+        <div class="logo" aria-hidden="true"><svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M2 12h2l2-6 3 12 3-15 3 18 3-10 2 1h2"/></svg></div>
+        <div><h1>VowelScope<span style="color:#74a69b">.</span></h1><p>AN INTERACTIVE PHONETICS LAB</p></div>
+      </div>
+      <div class="header-tools"><a class="locale-switch" href="../" lang="zh-CN" aria-label="Open the Chinese version">中文</a><div class="header-info"><span class="privacy-dot"></span>Audio processed locally in your browser</div></div>
+    </header>
+    <section class="intro"><div><span class="eyebrow">REAL-TIME FORMANT ANALYSIS</span><h2>Hear the sound. See the vowel.</h2><p>Sustain a vowel into your microphone and see its estimated formants in F1–F2 acoustic space.</p></div><div class="intro-right">Speech signal → LPC formants → Live vowel chart<br/>A personal lab for exploring pronunciation</div></section>
+    <main class="app-grid">
+      <section class="panel chart-panel" aria-labelledby="chartHeading">
+        <div class="panel-head"><div><h3 class="panel-title" id="chartHeading">F1–F2 Vowel Plot <span class="subtle">/ Schematic IPA references</span></h3></div><div class="status" id="status"><span class="status-dot"></span><span id="statusText">Not started</span></div></div>
+        <div class="profile-picker" aria-label="Language vowel inventory comparison">
+          <div class="profile-header">COMPARE VOWEL INVENTORIES <span>Choose two references A and B · All 28 basic reference symbols stay visible</span></div>
+          <div class="compare-selectors">
+            <div class="profile-group"><div class="profile-group-title"><span class="profile-letter a">A</span><strong>Reference A</strong><span class="chosen" id="profileAName"></span></div><div class="profile-buttons" id="profileAButtons" role="group" aria-label="Choose reference A"></div></div>
+            <div class="profile-group"><div class="profile-group-title"><span class="profile-letter b">B</span><strong>Reference B</strong><span class="chosen" id="profileBName"></span></div><div class="profile-buttons" id="profileBButtons" role="group" aria-label="Choose reference B"></div></div>
+          </div>
+        </div>
+                <div class="chart-wrap"><canvas id="vowelChart" width="1000" height="750" role="img" aria-label="F1 F2 vowel chart; horizontal F2 decreases to the right and vertical F1 increases downward"></canvas><div class="chart-placeholder" id="placeholder"><strong>Ready to analyze your voice</strong><small>Select Start Microphone to begin</small></div></div>
+        <div class="chart-caption"><div class="chart-legend"><span><i class="swatch" style="background:#9bb1a6"></i>28 basic IPA vowel symbols</span><span><i class="swatch" style="background:#217d62"></i>Reference A</span><span><i class="swatch" style="background:#3475c5"></i>Reference B</span><span><i class="swatch" style="background:#e18b62"></i>Estimated formants</span><span><i class="swatch" style="background:#98c6b2"></i>Formant trajectory</span></div><div>F2 decreases to the right · F1 increases downward. Reference coordinates are illustrative; tongue position is not measured.</div></div>
+        <div class="profile-explainer" aria-live="polite">
+          <div class="profile-topline"><strong id="profileName">Compare vowel inventories</strong><span id="profileCount"></span></div>
+          <p id="profileDescription">Green and blue denote references A and B. Shared vowels receive a two-color ring. Matching IPA symbols do not guarantee identical pronunciation.</p>
+          <div class="compare-results">
+            <div class="compare-column a"><div class="compare-caption">A only <span id="onlyACount"></span></div><div class="profile-inventory" id="onlyAInventory"></div></div>
+            <div class="compare-column shared"><div class="compare-caption">Shared IPA symbols <span id="sharedCount"></span></div><div class="profile-inventory" id="sharedInventory"></div></div>
+            <div class="compare-column b"><div class="compare-caption">B only <span id="onlyBCount"></span></div><div class="profile-inventory" id="onlyBInventory"></div></div>
+          </div>
+          <p class="profile-extras" id="profileExtras"></p>
+          <div class="profile-legend">Green ring: A · Blue ring: B · Two-color ring: shared · Dashed: accent-dependent · Gray: other IPA vowels</div>
+        </div>
+      </section>
+      <aside class="controls" aria-label="Microphone and analysis settings">
+        <div class="panel control-panel">
+          <div class="panel-head" style="margin:0"><h3 class="panel-title">Microphone input</h3><span class="subtle">INPUT</span></div>
+          <div class="microphone-bar"><div class="mic-icon"><svg width="19" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="13" rx="3"/><path d="M5 10a7 7 0 0014 0M12 17v5m-4 0h8"/></svg></div><div style="flex:1;min-width:0"><div class="mic-bar-label" id="micLabel">Microphone disconnected</div><div class="mic-bar-detail" id="micDetail">Awaiting permission</div><div class="level"><div id="levelFill"></div></div></div></div>
+          <button id="startBtn" class="primary" type="button">Start Microphone</button>
+          <div class="button-row"><button class="secondary" id="freezeBtn" disabled type="button">Pause Display</button><button class="secondary" id="clearBtn" type="button">Clear Trail</button></div>
+          <div role="alert" aria-live="polite" class="error" id="error"></div>
+        </div>
+        <div class="panel detected-panel">
+          <div class="panel-head" style="margin:0"><h3 class="panel-title">Nearest vowel reference</h3><span class="subtle">ESTIMATED IPA</span></div>
+          <div class="reading"><div class="ipa-symbol" id="ipaSymbol">—</div><div class="reading-info"><strong id="ipaName">Waiting for speech</strong><span id="ipaHint">Sustain a clear vowel for about one second</span></div></div>
+          <div class="metric-grid"><div class="metric"><span>F1</span><strong id="f1">—</strong></div><div class="metric"><span>F2</span><strong id="f2">—</strong></div><div class="metric"><span>F3</span><strong id="f3">—</strong></div></div>
+          <div id="labPanel" style="display:none;padding:12px;margin-top:14px;border:1px solid #c8dbcf;border-radius:12px;background:#f4faf6">
+            <strong>Research Lab · Raw vs smoothed formants</strong>
+            <p style="font-size:12px;margin:8px 0 4px">Raw accepted LPC estimate: <code id="labRaw">—</code></p>
+            <p style="font-size:12px;margin:4px 0">Smoothed chart / public display: <code id="labShown">—</code></p>
+            <p style="font-size:12px;margin:4px 0">F2 visual smoothing offset: <code id="labF2Diff">—</code></p>
+            <p style="font-size:11px;color:#617769;line-height:1.5;margin:8px 0 0">Only the extra diagnostics change; original chart, classification and microphone processing are unchanged. Raw estimates are not verified ground truth.</p>
+          </div>
+          <p class="help-text">Measurements in Hz. IPA symbols are approximate F1/F2 matches. Language selection changes highlighting only, not detection or accent accuracy scoring.</p>
+        </div>
+        <div class="panel setting-panel">
+          <div class="panel-head" style="margin:0"><h3 class="panel-title">Detection settings</h3><span class="subtle">TUNE</span></div>
+          <div class="setting-row"><label>Vowel tracking mode</label><output id="trackingModeLabel">Default · Responsive</output></div>
+          <div class="tracking-mode" role="group" aria-label="Vowel tracking mode">
+            <button id="modeClassic" class="tracking-option active" type="button" aria-pressed="true">Responsive · Original</button>
+            <button id="modeStable" class="tracking-option" type="button" aria-pressed="false">Anti-jitter · Experimental</button>
+          </div>
+          <p class="help-text" id="modeHelp">Original tracking responds faster and follows natural transitions; consonants may still produce outliers.</p>
+          <div class="setting-row"><label for="smooth">Trajectory smoothing</label><output id="smoothOut">Medium</output></div><input aria-label="Trajectory smoothing" type="range" min="0" max="100" value="58" id="smooth"/>
+          <div class="setting-row"><label for="sensitivity">Input sensitivity</label><output id="sensitivityOut">60%</output></div><input aria-label="Input sensitivity" type="range" min="5" max="100" value="60" id="sensitivity"/>
+          <p class="help-text">More smoothing reduces visible jitter. Anti-jitter suppresses some consonant noise and spurious peaks, but may miss short vowels.</p>
+        </div>
+        <div class="panel target-panel">
+          <div class="panel-head" style="margin:0"><h3 class="panel-title">Reference vowel positions</h3><span class="subtle">REFERENCE</span></div>
+          <div class="target-buttons" id="targetButtons"></div>
+          <p class="target-explanation" id="targetDescription">28 schematic tongue positions · 28 human recordings. Select a vowel to explore.</p>
+          <section class="reference-demo" id="referenceDemo" hidden aria-label="Articulation and reference sound">
+            <div class="reference-heading"><strong class="reference-symbol" id="referenceSymbol"></strong><span class="reference-articulation" id="referenceArticulation"></span></div>
+            <figure class="reference-figure">
+              <svg id="referenceDiagram" viewBox="0 0 360 260" role="img" aria-label="Schematic tongue side view">
+                <path d="M 118 240 L 118 195 C 91 155 93 102 123 61 C 146 26 210 22 247 49 C 265 64 267 85 280 103 L 300 119 Q 304 125 291 129 L 285 140 Q 302 146 286 154 Q 301 162 286 172 C 277 203 248 219 212 219 L 212 240" fill="#efe4d5" stroke="#b8aa96" stroke-width="2.5" stroke-linejoin="round"/>
+                <path d="M 128 182 Q 117 124 148 103 Q 194 67 247 93 L 263 126 L 280 144 L 278 164 Q 246 198 187 201 L 153 222 Z" fill="#fffdfa" stroke="#cbbfab" stroke-width="1.8"/>
+                <path d="M 148 103 Q 200 69 247 93" fill="none" stroke="#a79782" stroke-width="5" stroke-linecap="round"/>
+                <path d="M 256 127 L 269 132 L 265 145 L 254 140 Z" fill="white" stroke="#b9b5a7" stroke-width="1.5"/>
+                <path d="M 265 169 L 273 172 L 267 184 L 259 181 Z" fill="white" stroke="#b9b5a7" stroke-width="1.5"/>
+                <path id="referenceTongue" d="M 126 205 C 111 170 135 117 164 120 C 199 116 219 147 264 165 C 252 186 213 191 179 210 Z" fill="#d59086" stroke="#ad655e" stroke-width="2.5" stroke-linejoin="round"/>
+                <circle id="referenceTonguePoint" cx="192" cy="129" r="4.5" fill="#fff5df" stroke="#ad655e" stroke-width="1.5"/>
+                <ellipse id="referenceLips" cx="286" cy="155" rx="3" ry="13" fill="none" stroke="#ad655e" stroke-width="3"/>
+                <circle cx="322" cy="47" r="25" fill="#fffdfa" stroke="#d9dfd5"/>
+                <ellipse id="referenceLipShape" cx="322" cy="47" rx="16" ry="4" fill="#fcf5ee" stroke="#ad655e" stroke-width="3"/>
+                <text id="referenceLipUnknown" x="322" y="53" text-anchor="middle" font-size="20" fill="#76857a" visibility="hidden">?</text>
+                <text x="322" y="87" text-anchor="middle" fill="#76857a" font-size="11">Front lip view</text>
+                <text x="44" y="159" fill="#76857a" font-size="11">Tongue</text>
+                <path d="M 74 164 L 125 174" fill="none" stroke="#a0aa9c" stroke-width="1.5"/>
+                <text x="183" y="253" text-anchor="middle" fill="#718577" font-size="10" id="referenceDirection">Tongue root ← → Tongue tip</text>
+              </svg>
+              <figcaption>Conceptual tongue and lip shapes; jaw held fixed. Transitions do not reproduce actual speech movements.</figcaption>
+            </figure>
+            <div class="reference-controls"><button id="referenceReplay" type="button">▶ Replay</button><button id="referenceStop" type="button" disabled>■ Stop</button></div>
+            <p class="reference-audio-status" id="referenceAudioStatus" role="status" aria-live="polite"></p>
+            <a class="reference-source" id="referenceSource" href="https://github.com/serverhiccups/ipa-chart" target="_blank" rel="noopener noreferrer">Recording source and license</a>
+            <p class="reference-note"><a class="reference-source" id="referenceLicense" href="../reference-audio/ATTRIBUTION.html" target="_blank" rel="noopener noreferrer">Audio collection credits: Peter Isotalo, Erutoon, TFighterPilot, Adamsa123. MP3 format conversion only. Attribution &amp; license</a></p>
+            <p class="reference-note">Community IPA examples, not a unique language or accent standard. Each symbol is linked explicitly to its source recording; this is not independent expert phonetic certification.</p>
+            <p class="reference-note">Playback stops microphone capture to keep the reference out of your measurements. Audio loads from this site; microphone audio stays on your device.</p>
+          </section>
+        </div>
+      </aside>
+    </main>
+    <div class="notes"><div class="icon">ⓘ</div><div><strong>About this experiment</strong><p>This experimental phonetics tool uses LPC to estimate formants and displays the nearest schematic reference quality, not a verified phoneme recognition. Optional anti-jitter filtering attempts to reject some consonant noise before plotting vowel positions. Language selection highlights common vowel qualities; it does not load language-specific measured F1/F2 references or speech models. The chart uses illustrative F1/F2 positions, not frequencies specified by the IPA or measured from these recordings. Actual formants vary by language, individual, vocal tract length and speaking conditions. Actual tongue shape cannot be uniquely inferred from these measures. Start with sustained [i], [a] and [u] instead of full words.</p><p class="reference-links">Phonetics references: <a href="https://www.internationalphoneticassociation.org/content/ipa-vowels" target="_blank" rel="noopener noreferrer">International Phonetic Association</a> · <a href="https://corpus.eduhk.hk/mandarin_pronunciation/?page_id=36" target="_blank" rel="noopener noreferrer">EdUHK Cantonese phonology</a> · <a href="https://talcomosuena.spanish.ufl.edu/module2/4" target="_blank" rel="noopener noreferrer">Spanish vowels (University of Florida)</a> · <a href="https://www.englishspeechservices.com/blog/smoothing-then-and-now/" target="_blank" rel="noopener noreferrer">British diphthong change</a>.</p></div></div>
+    <footer class="footer"><span>VowelScope · Experimental phonetics · microphone processing stays on device</span><span>Web Audio API · LPC / Autocorrelation · No external libraries</span></footer>
+  </div>
+  <script src="../dsp/core.js"></script>
+  <script src="../dsp/profiler.js"></script>
+  <script src="../reference-player.js?v=20261022"></script>
+  <script>
+  (() => {
+    'use strict';
+    const VOWELS = [
+      {symbol:'i',f1:280,f2:2350,name:'close front unrounded vowel'},{symbol:'y',f1:310,f2:2050,name:'close front rounded vowel'},
+      {symbol:'ɨ',f1:300,f2:1650,name:'close central unrounded vowel'},{symbol:'ɵ',f1:480,f2:1430,name:'close-mid central rounded vowel'},{symbol:'ɯ',f1:320,f2:1200,name:'close back unrounded vowel'},
+      {symbol:'u',f1:350,f2:850,name:'close back rounded vowel'},{symbol:'ɪ',f1:390,f2:1980,name:'near-close near-front unrounded vowel'},
+      {symbol:'ʊ',f1:440,f2:1030,name:'near-close near-back rounded vowel'},{symbol:'e',f1:400,f2:2100,name:'close-mid front unrounded vowel'},
+      {symbol:'ø',f1:390,f2:1840,name:'close-mid front rounded vowel'},{symbol:'ɤ',f1:460,f2:1150,name:'close-mid back unrounded vowel'},
+      {symbol:'o',f1:490,f2:880,name:'close-mid back rounded vowel'},{symbol:'ə',f1:520,f2:1480,name:'mid central vowel'},
+      {symbol:'ɛ',f1:570,f2:1870,name:'open-mid front unrounded vowel'},{symbol:'ɜ',f1:590,f2:1425,name:'open-mid central unrounded vowel'},{symbol:'œ',f1:560,f2:1660,name:'open-mid front rounded vowel'},
+      {symbol:'ʌ',f1:640,f2:1170,name:'open-mid back unrounded vowel'},{symbol:'ɔ',f1:600,f2:900,name:'open-mid back rounded vowel'},
+      {symbol:'æ',f1:700,f2:1790,name:'near-open front unrounded vowel'},{symbol:'ɐ',f1:700,f2:1430,name:'near-open central vowel'},
+      {symbol:'a',f1:810,f2:1680,name:'open front unrounded vowel'},{symbol:'ɑ',f1:810,f2:1150,name:'open back unrounded vowel'},
+      {symbol:'ɒ',f1:810,f2:920,name:'open back rounded vowel'},
+      {symbol:'ʉ',f1:310,f2:1420,name:'close central rounded vowel'},
+      {symbol:'ʏ',f1:425,f2:1760,name:'near-close near-front rounded vowel'},
+      {symbol:'ɘ',f1:430,f2:1660,name:'close-mid central unrounded vowel'},
+      {symbol:'ɞ',f1:605,f2:1280,name:'open-mid central rounded vowel'},
+      {symbol:'ɶ',f1:800,f2:1590,name:'open front rounded vowel'}
+    ];
+    // Inventory overlays are phonological teaching approximations, not measured dialect-specific F1/F2 standards.
+    // Diphthongs, rhotic vowels and Mandarin apical vowels cannot be represented reliably by one static F1/F2 point.
+    // Phone-quality inventories are teaching conventions, not measured phoneme models.
+    // These overlays do not change the speech processing or formant estimation.
+    const PROFILES = [
+      {id:'none',label:'None',name:'No highlighting',vowels:[],optional:[],notation:{},
+        description:'All 28 basic IPA vowel reference symbols stay visible. Language selections change highlights only.',
+        extras:'F1/F2 positions are schematic and not calibrated for a particular speaker, language or device.'},
+      {id:'en-us',label:'US English',name:'General American English',
+        vowels:['i','ɪ','ɛ','æ','ʌ','ə','ɑ','ʊ','u'],optional:['ɔ'],notation:{},
+        description:'Broad transcription of common General American monophthong qualities. /ɔ/ depends on the cot–caught merger; regions and speakers vary.',
+        extras:'Not static points: /eɪ, oʊ, aɪ, aʊ, ɔɪ/ and rhotic vowels /ɝ, ɚ/. US /ɛ/ and British /e/ in DRESS can reflect transcription conventions, not necessarily different phonemes.'},
+      {id:'en-gb',label:'UK English',name:'Conventional British English (traditional RP notation)',
+        vowels:['i','ɪ','e','æ','ɑ','ɒ','ɔ','ʊ','u','ʌ','ɜ','ə'],optional:[],
+        notation:{i:'iː',ɑ:'ɑː',ɔ:'ɔː',u:'uː',ɜ:'ɜː'},
+        description:'Conventional British RP-style teaching transcription. Modern Standard Southern British vowels can differ from this older inventory; IPA length marks are not displayed as duration.',
+        extras:'Closing diphthongs /eɪ, əʊ, aɪ, aʊ, ɔɪ/; traditional centring diphthongs /ɪə, eə~ɛə, ʊə/ are increasingly monophthongal, merged or variable in contemporary accents.'},
+      {id:'zh-cmn',label:'Mandarin',name:'Standard Mandarin',
+        vowels:['i','y','u','ɤ','ə','a'],optional:[],notation:{},
+        description:'Selected Mandarin vowel qualities, not a definitive phonemic inventory. Examples: yi [i], yu [y], wu [u], e [ɤ]. Analyses and allophones vary.',
+        extras:'Not separately represented: syllabic apical segments in zi/ci/si and zhi/chi/shi/ri, as well as glides and conditional variants.'},
+      {id:'yue-hk',label:'Cantonese',name:'Hong Kong Cantonese · 7 long + 4 short qualities',
+        vowels:['i','y','u','ɛ','œ','ɔ','a','ɪ','ɵ','ʊ','ɐ'],optional:[],
+        notation:{i:'iː',y:'yː',u:'uː',ɛ:'ɛː',œ:'œː',ɔ:'ɔː',a:'aː'},
+        description:'11 monophthong qualities in a Zee-based analysis (as summarized by EdUHK): seven longer [i, y, ɛ, œ, a, ɔ, u] and four shorter [ɐ, ɪ, ɵ, ʊ]. This list mixes phonetic variants and does not mean 11 contrastive vowel phonemes.',
+        extras:'[ɪ], [ɵ] and [ʊ] are often analyzed as conditioned allophones of /i/, /œ/ and /u/. Other analyses may use [e] or [o] in relevant contexts. Diphthongs and syllabic nasals are not mapped to single points.'},
+      {id:'es-es',label:'Spain Spanish',name:'Peninsular Spanish · 5 vowel phonemes',
+        vowels:['i','e','a','o','u'],optional:[],notation:{},
+        plotOverrides:{a:{f1:810,f2:1450}},
+        description:'Standard Peninsular Spanish is conventionally described with five phonemes /i e a o u/. Its /a/ is typically central [ä], so the colored Spanish /a/ marker is placed nearer the center rather than on the front IPA [a] point.',
+        extras:'The central Spanish /a/ location is illustrative, not a measured Spanish reference. Diphthongs need moving trajectories; matching IPA symbols do not guarantee the same acoustics.'}
+    ];
+    const $ = (id) => document.getElementById(id);
+    const labMode=/(?:^\?|&)lab=1(?:&|$)/.test(window.location?.search||'');
+    const profiling=/(?:^\?|&)profile=1(?:&|$)/.test(window.location?.search||'')
+      ?VowelScopeProfiler.create(75):null;
+    const canvas=$('vowelChart'),ctx=canvas.getContext('2d');
+    const state={running:false,frozen:false,ctx:null,stream:null,source:null,analyser:null,mute:null,lastProcess:0,lastSound:0,formants:null,acousticFormants:null,visualFormants:null,trail:[],target:null,profileA:'en-us',profileB:'zh-cmn',mode:'classic',level:0,sampleCount:0,firstCandidate:null,pendingJump:null,lastAccepted:0};
+    const Fs=11025, MinF1=180, MaxF1=1100, MinF2=600, MaxF2=3000;
+    if(profiling)window.VowelScopeDiagnostics=Object.freeze({snapshot(){
+      const settings=state.stream?.getTracks()[0]?.getSettings?.()||{};
+      return {...profiling.snapshot(),sample_rate_hz:state.ctx?.sampleRate||null,
+        capture_settings:{echoCancellation:settings.echoCancellation??null,
+          noiseSuppression:settings.noiseSuppression??null,autoGainControl:settings.autoGainControl??null}};
+    }});
+    const margin={left:84,right:50,top:52,bottom:67};
+    const W=1000,H=750,PW=W-margin.left-margin.right,PH=H-margin.top-margin.bottom;
+    let audioBuffer=null,captureGeneration=0,capturePending=false,pendingCapture=null;
+    function xy(f1,f2){return {x:margin.left+(MaxF2-f2)/(MaxF2-MinF2)*PW,y:margin.top+(f1-MinF1)/(MaxF1-MinF1)*PH};}
+    function roundedRect(x,y,w,h,r){ctx.beginPath();ctx.roundRect(x,y,w,h,r);}
+    function baseChart(){
+      ctx.clearRect(0,0,W,H);ctx.fillStyle='#fafbf9';ctx.fillRect(0,0,W,H);
+      ctx.fillStyle='#f5f8f5';roundedRect(margin.left,margin.top,PW,PH,6);ctx.fill();
+      ctx.save();ctx.beginPath();ctx.rect(margin.left,margin.top,PW,PH);ctx.clip();
+      for(let f2=750;f2<=3000;f2+=250){let x=xy(300,f2).x;ctx.beginPath();ctx.moveTo(x,margin.top);ctx.lineTo(x,H-margin.bottom);ctx.strokeStyle=(f2%500===0)?'#e3e9e4':'#edf0ed';ctx.lineWidth=1;ctx.stroke();}
+      for(let f1=200;f1<=1100;f1+=100){let y=xy(f1,1000).y;ctx.beginPath();ctx.moveTo(margin.left,y);ctx.lineTo(W-margin.right,y);ctx.strokeStyle=(f1%200===0)?'#e3e9e4':'#edf0ed';ctx.lineWidth=1;ctx.stroke();}
+      ctx.restore();ctx.font='15px system-ui, sans-serif';ctx.fillStyle='#728880';ctx.textAlign='center';
+      for(let f2=1000;f2<=3000;f2+=500)ctx.fillText(String(f2),xy(300,f2).x,H-margin.bottom+30);
+      ctx.textAlign='right';for(let f1=200;f1<=1000;f1+=200)ctx.fillText(String(f1),margin.left-17,xy(f1,1000).y+5);
+      ctx.font='bold 15px system-ui, sans-serif';ctx.textAlign='center';ctx.fillStyle='#566e65';ctx.fillText('F2 (Hz)  ·  Higher ← → Lower',margin.left+PW/2,H-14);
+      ctx.save();ctx.translate(22,margin.top+PH/2);ctx.rotate(-Math.PI/2);ctx.fillText('F1 (Hz) · Increasing frequency ←',0,0);ctx.restore();
+      ctx.font='600 13px system-ui, sans-serif';ctx.fillStyle='#90a29a';ctx.textAlign='left';ctx.fillText('Higher F2',margin.left+13,margin.top+23);
+      ctx.textAlign='right';ctx.fillText('Lower F2',W-margin.right-13,margin.top+23);
+      const A=PROFILES.find(p=>p.id===state.profileA)||PROFILES[0];
+      const B=PROFILES.find(p=>p.id===state.profileB)||PROFILES[0];
+      // All 28 schematic IPA references stay visible. Language-specific phonetic
+      // realizations, such as Spanish central [ä], get their own overlay position.
+      function profilePosition(profile,v){
+        const custom=profile.plotOverrides&&profile.plotOverrides[v.symbol];
+        return custom?xy(custom.f1,custom.f2):xy(v.f1,v.f2);
+      }
+      function ring(x,y,color,rad=14,dashed=false){
+        ctx.beginPath();ctx.arc(x,y,rad,0,2*Math.PI);
+        ctx.lineWidth=dashed?2:2.7;ctx.strokeStyle=color;
+        if(dashed)ctx.setLineDash([4,4]);
+        ctx.stroke();if(dashed)ctx.setLineDash([]);
+      }
+      const labelPlan=[];
+      for(const v of VOWELS){
+        const p=xy(v.f1,v.f2),targeted=state.target===v.symbol;
+        const inA=A.vowels.includes(v.symbol),inB=B.vowels.includes(v.symbol);
+        const optionalA=A.optional.includes(v.symbol),optionalB=B.optional.includes(v.symbol);
+        const pa=profilePosition(A,v),pb=profilePosition(B,v);
+        const samePoint=inA&&inB&&Math.hypot(pa.x-pb.x,pa.y-pb.y)<5;
+        ctx.save();
+        ctx.beginPath();ctx.arc(p.x,p.y,targeted?9:5,0,Math.PI*2);
+        ctx.fillStyle=targeted?'#e48760':'#9bada3';ctx.fill();
+        if(samePoint){
+          ctx.beginPath();ctx.arc(pa.x,pa.y,8,0,Math.PI*2);ctx.fillStyle='#795bac';ctx.fill();
+          ctx.lineWidth=3.5;
+          ctx.beginPath();ctx.arc(pa.x,pa.y,14,Math.PI/2,3*Math.PI/2);ctx.strokeStyle='#217d62';ctx.stroke();
+          ctx.beginPath();ctx.arc(pa.x,pa.y,14,-Math.PI/2,Math.PI/2);ctx.strokeStyle='#3475c5';ctx.stroke();
+        }else{
+          for(const [included,pos,color] of [[inA,pa,'#217d62'],[inB,pb,'#3475c5']]){
+            if(!included)continue;
+            ctx.beginPath();ctx.arc(pos.x,pos.y,7.5,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();
+            ring(pos.x,pos.y,color);
+          }
+        }
+        if(optionalA)ring(pa.x,pa.y,'#217d62',19,true);
+        if(optionalB)ring(pb.x,pb.y,'#3475c5',19,true);
+        if(targeted)ring(p.x,p.y,'#e48760',23);
+        // The Spanish /a/ marker is deliberately not placed on IPA cardinal [a].
+        // Label it as the more-central phonetic realization [ä].
+        if(v.symbol==='a'){
+          for(const [profile,included,pos,color] of [[A,inA,pa,'#217d62'],[B,inB,pb,'#3475c5']]){
+            if(included&&profile.id==='es-es'){
+              ctx.font='700 18px "Charis SIL","Times New Roman",serif';
+              ctx.fillStyle=color;ctx.textAlign='left';
+              ctx.fillText('ä',pos.x+13,pos.y+24);
+            }
+          }
+        }
+        ctx.restore();
+        // The permanent IPA label belongs to the base reference point.
+        // A language-specific shifted marker (Spanish [ä]) has its own label.
+        const baseA=inA&&Math.hypot(pa.x-p.x,pa.y-p.y)<5;
+        const baseB=inB&&Math.hypot(pb.x-p.x,pb.y-p.y)<5;
+        labelPlan.push({v,p,targeted,inA:baseA,inB:baseB,optionalA,optionalB,priority:targeted?4:baseA&&baseB?3:baseA||baseB?2:optionalA||optionalB?1:0});
+      }
+      // Place the higher-priority labels first and gently offset neighbours to
+      // reduce collisions while preserving every IPA symbol on the reference map.
+      const labelBoxes=[];
+      const candidates=[[11,-10],[11,23],[-12,-10],[-12,23],[15,6],[-15,6],[4,-21],[4,34]];
+      labelPlan.sort((a,b)=>b.priority-a.priority);
+      for(const item of labelPlan){
+        const {v,p,targeted,inA,inB}=item;
+        // In dual mode, chart labels use bare IPA vowel qualities; vowel
+        // length is language-dependent and is not encoded by an F1/F2 dot.
+        const label=v.symbol;
+        ctx.save();
+        ctx.font=`${targeted||inA||inB?'700':'500'} 21px "Charis SIL","Times New Roman",serif`;
+        ctx.fillStyle=targeted?'#a95a3b':inA&&inB?'#7659a6':inA?'#176a50':inB?'#2c68b0':'#627970';
+        const width=ctx.measureText(label).width;
+        let chosen=null,leastOverlap=Infinity;
+        for(const [dx,dy] of candidates){
+          const x=dx<0?p.x+dx-width:p.x+dx,y=p.y+dy;
+          const box={left:x-3,right:x+width+3,top:y-20,bottom:y+5};
+          if(box.left<margin.left+2||box.right>W-margin.right-2||box.top<margin.top+2||box.bottom>H-margin.bottom-2)continue;
+          const overlap=labelBoxes.reduce((sum,other)=>{
+            const w=Math.max(0,Math.min(box.right,other.right)-Math.max(box.left,other.left));
+            const h=Math.max(0,Math.min(box.bottom,other.bottom)-Math.max(box.top,other.top));
+            return sum+w*h;
+          },0);
+          if(overlap<leastOverlap){leastOverlap=overlap;chosen={x,y,box};}
+          if(overlap===0)break;
+        }
+        if(!chosen){const x=Math.max(margin.left+3,Math.min(p.x+11,W-margin.right-width-4));const y=Math.max(margin.top+23,Math.min(p.y-10,H-margin.bottom-4));chosen={x,y,box:{left:x-3,right:x+width+3,top:y-20,bottom:y+5}};}
+        labelBoxes.push(chosen.box);
+        ctx.textAlign='left';ctx.fillText(label,chosen.x,chosen.y);ctx.restore();
+      }
+      if(state.target){const v=VOWELS.find(x=>x.symbol===state.target);if(v){const p=xy(v.f1,v.f2);ctx.beginPath();ctx.setLineDash([5,7]);ctx.moveTo(p.x,margin.top);ctx.lineTo(p.x,H-margin.bottom);ctx.moveTo(margin.left,p.y);ctx.lineTo(W-margin.right,p.y);ctx.strokeStyle='#95bca8';ctx.lineWidth=1.3;ctx.stroke();ctx.setLineDash([]);}}
+    }
+    function drawChart(now){baseChart();
+      state.trail=state.trail.filter(t=>now-t.t<6200);
+      for(const p of state.trail){const age=(now-p.t)/6200,pos=xy(p.f1,p.f2);ctx.beginPath();ctx.arc(pos.x,pos.y,4+(1-age)*3,0,Math.PI*2);ctx.fillStyle=`rgba(47,146,121,${(1-age)*0.50})`;ctx.fill();}
+      if(state.formants){const p=xy(state.formants.f1,state.formants.f2);ctx.beginPath();ctx.arc(p.x,p.y,23,0,Math.PI*2);ctx.fillStyle='rgba(221,137,96,.15)';ctx.fill();ctx.beginPath();ctx.arc(p.x,p.y,11.5,0,Math.PI*2);ctx.fillStyle='#e48760';ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=3;ctx.stroke();}
+    }
+    function setStatus(mode,description){const el=$('status');el.className='status'+(mode==='live'?' live':mode==='frozen'?' frozen':'');$('statusText').textContent=description;}
+    function resetReading(){state.formants=null;state.acousticFormants=null;state.visualFormants=null;$('ipaSymbol').textContent='—';$('ipaName').textContent='Waiting for speech';$('ipaHint').textContent=state.running?'Please sustain a vowel':'Sustain a steady vowel for one second';for(const n of ['f1','f2','f3'])$(n).textContent='—';if(labMode){for(const n of ['labRaw','labShown','labF2Diff'])$(n).textContent='—';}}
+    function nearestVowel(f1,f2){let best=null,lowest=Infinity;for(const v of VOWELS){const d=Math.hypot((f1-v.f1)/340,(f2-v.f2)/950);if(d<lowest){lowest=d;best=v;}}return {vowel:best,distance:lowest};}
+    // Compatibility wrappers keep offline research replacements isolated.
+    function preprocess(buffer,fs){return VowelScopeDSP.preprocess(buffer,fs);}
+    function levinsonDurbin(r,order){return VowelScopeDSP.levinsonDurbin(r,order);}
+    function lpcSpectrum(y,fs){return VowelScopeDSP.lpcSpectrum(y,fs);}
+    function estimateFormants(y,fs){return VowelScopeDSP.estimateFormants(y,fs,lpcSpectrum);}
+    function voicedEvidence(raw,fs){return VowelScopeDSP.voicedEvidence(raw,fs);}
+    function formantDistance(a,b){
+      return Math.hypot((a.f1-b.f1)/340,(a.f2-b.f2)/900);
+    }
+    // Require two coherent frames to start a vowel or to accept a large
+    // discontinuity. A single LPC peak-swap must not teleport the marker.
+    function acceptFormants(candidate,now){
+      // Acoustic decisions must not depend on the display smoothing slider.
+      if(!state.acousticFormants){
+        const prior=state.firstCandidate;
+        if(!prior||now-prior.t>230||formantDistance(prior.f,candidate)>0.52){
+          state.firstCandidate={f:candidate,t:now};return null;
+        }
+        state.firstCandidate=null;
+        state.pendingJump=null;
+        return {f1:(prior.f.f1+candidate.f1)/2,f2:(prior.f.f2+candidate.f2)/2,f3:candidate.f3};
+      }
+      const distance=formantDistance(state.acousticFormants,candidate);
+      if(distance>0.90){
+        const pending=state.pendingJump;
+        if(!pending||now-pending.t>230||formantDistance(pending.f,candidate)>0.52){
+          state.pendingJump={f:candidate,t:now};return null;
+        }
+        state.pendingJump=null;
+        return {f1:(pending.f.f1+candidate.f1)/2,f2:(pending.f.f2+candidate.f2)/2,f3:candidate.f3};
+      }
+      state.pendingJump=null;
+      return candidate;
+    }
+    function clearOldVowel(now,description,preserveCandidate=false){
+      // A candidate awaiting its second frame is not an expired vowel.
+      // Only expire a reading after at least one frame was accepted.
+      if(state.lastAccepted>0&&now-state.lastAccepted>430){
+        resetReading();
+        state.lastAccepted=0;
+      }
+      // While confirming a new vowel or real transition, retain the
+      // provisional frame; silence and unvoiced sounds do clear it.
+      if(!preserveCandidate){
+        state.firstCandidate=null;
+        state.pendingJump=null;
+      }
+      if(description)$('micDetail').textContent=description;
+    }
+    function processAudio(now){
+      if(!state.running||state.frozen||!state.analyser||!state.ctx)return;
+      if(now-state.lastProcess<75)return;
+      state.lastProcess=now;
+      state.analyser.getFloatTimeDomainData(audioBuffer);
+      const parsed=preprocess(audioBuffer,state.ctx.sampleRate);
+      if(!parsed)return;
+      const rms=parsed.rms;
+      state.level=.74*state.level+.26*rms;
+      $('levelFill').style.width=`${Math.min(100,Math.max(0,state.level*440))}%`;
+      const threshold=0.003+(100-Number($('sensitivity').value))*.00017;
+      if(rms<threshold){
+        if(state.mode==='classic'){
+          if(now-state.lastSound>450){resetReading();$('micDetail').textContent='Listening · No stable sound';}
+        }else{
+          clearOldVowel(now,'Listening · No stable sound');
+        }
+        return;
+      }
+      // Classic reproduces the original live LPC path, without periodicity
+      // gates or two-frame jump confirmation. Users can switch modes at will.
+      if(state.mode==='stable'){
+        const voice=voicedEvidence(parsed.raw,Fs);
+        if(!voice.voiced){
+          clearOldVowel(now,'Unvoiced segment · Consonant noise filtered');
+          return;
+        }
+      }else{
+        state.lastSound=now;
+        $('micDetail').textContent='Sound detected · Analyzing live';
+      }
+      const candidate=estimateFormants(parsed.y,Fs);
+      if(!candidate){
+        if(state.mode==='stable')clearOldVowel(now,'Listening · Unstable formants');
+        return;
+      }
+      let accepted=candidate;
+      if(state.mode==='stable'){
+        if(now-state.lastAccepted>430&&state.formants){
+          resetReading();state.pendingJump=null;state.firstCandidate=null;
+        }
+        accepted=acceptFormants(candidate,now);
+        if(!accepted){
+          clearOldVowel(now,'Confirming vowel position · Outlier rejected',true);
+          return;
+        }
+      }
+      // Phase 3: separate analytical formants from display smoothing.
+      // state.formants stays the legacy visual alias for unchanged behavior.
+      const acoustic={...accepted};
+      const visual=VowelScopeDSP.smoothFormants(accepted,state.visualFormants,$('smooth').value);
+      const labRaw=labMode?acoustic:null;
+      state.acousticFormants=acoustic;
+      state.visualFormants=visual;
+      state.formants=visual; // keep existing chart and default classification
+      accepted=visual;
+      if(labMode&&labRaw){
+        const fmt=x=>x==null?'—':String(Math.round(x));
+        const value=x=>"F1 "+fmt(x.f1)+" · F2 "+fmt(x.f2)+" · F3 "+fmt(x.f3)+" Hz";
+        $('labRaw').textContent=value(labRaw);
+        $('labShown').textContent=value(accepted);
+        $('labF2Diff').textContent=(accepted.f2-labRaw.f2>=0?'+':'')+
+          Math.round(accepted.f2-labRaw.f2)+' Hz';
+      }
+      state.lastAccepted=now;
+      if(state.mode==='stable'){
+        state.lastSound=now;$('micDetail').textContent='Stable voiced segment · Analyzing vowel';
+      }
+      state.trail.push({f1:accepted.f1,f2:accepted.f2,t:now});
+      if(state.trail.length>160)state.trail.shift();
+      const {vowel,distance}=nearestVowel(accepted.f1,accepted.f2);
+      $('ipaSymbol').textContent=vowel.symbol;
+      $('ipaName').textContent=vowel.name;
+      $('ipaHint').textContent=distance>0.60?'Far from reference · Exploratory estimate':'Nearest reference · Not an accuracy score';
+      $('f1').textContent=String(Math.round(accepted.f1));
+      $('f2').textContent=String(Math.round(accepted.f2));
+      $('f3').textContent=accepted.f3?String(Math.round(accepted.f3)):'—';
+      state.sampleCount++;
+    }
+    function frame(now){
+      if(state.running){
+        if(profiling&&!state.frozen&&now-state.lastProcess>=75){
+          const previous=state.sampleCount,start=performance.now();
+          processAudio(now);
+          profiling.record(now,performance.now()-start,state.sampleCount>previous);
+        }else processAudio(now);
+      }
+      drawChart(now);requestAnimationFrame(frame);
+    }
+    async function releaseAudio(stream,ac,nodes){
+      // Attempt every release even if one browser resource throws.
+      for(const track of stream?.getTracks()||[]){try{track.stop();}catch(_){}}
+      for(const node of nodes){try{node?.disconnect();}catch(_){}}
+      try{await ac?.close();}catch(_){}
+    }
+    async function startMic(){referencePlayer.stop();if(state.running||capturePending)return;
+      $('error').textContent='';if(!navigator.mediaDevices?.getUserMedia){$('error').textContent='Microphone unavailable, or page is not secure. Open with HTTPS or localhost.';return;}
+      $('startBtn').disabled=true;$('startBtn').textContent='Requesting microphone permission…';
+      const generation=++captureGeneration;capturePending=true;
+      let stream=null,ac=null,source=null,analyser=null,mute=null;
+      try{stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false},video:false});
+        if(generation!==captureGeneration){await releaseAudio(stream,null,[]);return;}
+        pendingCapture={stream,ac:null};
+        const AC=window.AudioContext||window.webkitAudioContext;ac=new AC();pendingCapture.ac=ac;await ac.resume();if(generation!==captureGeneration){await releaseAudio(stream,ac,[]);return;}source=ac.createMediaStreamSource(stream);analyser=ac.createAnalyser();mute=ac.createGain();analyser.fftSize=8192;analyser.smoothingTimeConstant=0;mute.gain.value=0;source.connect(analyser);analyser.connect(mute);mute.connect(ac.destination);
+        if(profiling)profiling.reset();
+        audioBuffer=new Float32Array(analyser.fftSize);Object.assign(state,{stream,ctx:ac,source,analyser,mute,running:true,frozen:false,lastProcess:0,lastSound:0,formants:null,trail:[],level:0,sampleCount:0,firstCandidate:null,pendingJump:null,lastAccepted:0,acousticFormants:null,visualFormants:null});
+        $('startBtn').textContent='Stop Microphone';$('startBtn').classList.add('stop');$('freezeBtn').disabled=false;$('freezeBtn').textContent='Pause Display';$('micLabel').textContent='Microphone connected';$('micDetail').textContent='Listening · Please sustain a vowel';$('placeholder').style.opacity='0';setStatus('live','Listening live');
+      }catch(e){await releaseAudio(stream,ac,[source,analyser,mute]);if(generation!==captureGeneration)return;$('error').textContent=(e.name==='NotAllowedError'?'Microphone permission denied. Check browser site permissions.':`Cannot start microphone: ${e.message}`)+'\nTip: Open this page with HTTPS or localhost.';setStatus('idle','Connection failed');}
+      finally{if(generation===captureGeneration){capturePending=false;pendingCapture=null;$('startBtn').disabled=false;if(!state.running)$('startBtn').textContent='Start Microphone';}}
+    }
+    async function stopMic(){
+      const stream=state.stream||pendingCapture?.stream,ac=state.ctx||pendingCapture?.ac,nodes=[state.source,state.analyser,state.mute];
+      pendingCapture=null;
+      captureGeneration++;capturePending=false;state.running=false;state.frozen=false;
+      $('startBtn').disabled=false;
+      state.ctx=state.stream=state.source=state.analyser=state.mute=null;state.trail=[];state.firstCandidate=null;state.pendingJump=null;state.lastAccepted=0;$('startBtn').textContent='Start Microphone';$('startBtn').classList.remove('stop');$('freezeBtn').disabled=true;$('freezeBtn').textContent='Pause Display';$('micLabel').textContent='Microphone disconnected';$('micDetail').textContent='Awaiting permission';$('levelFill').style.width='0%';$('placeholder').style.opacity='1';setStatus('idle','Not started');resetReading();
+      await releaseAudio(stream,ac,nodes);
+    }
+    function setTrackingMode(mode){
+      if(mode!=='classic'&&mode!=='stable')return;
+      if(state.mode===mode)return;
+      state.mode=mode;
+      // Discard old tracking history: the two modes have different filters.
+      state.formants=null;state.acousticFormants=null;state.visualFormants=null;state.trail=[];state.firstCandidate=null;
+      state.pendingJump=null;state.lastAccepted=0;state.lastSound=0;
+      resetReading();
+      $('modeClassic').classList.toggle('active',mode==='classic');
+      $('modeStable').classList.toggle('active',mode==='stable');
+      $('modeClassic').setAttribute('aria-pressed',String(mode==='classic'));
+      $('modeStable').setAttribute('aria-pressed',String(mode==='stable'));
+      $('trackingModeLabel').textContent=mode==='classic'?'Default · Responsive':'Experimental · Stabilized';
+      $('modeHelp').textContent=mode==='classic'
+        ?'Original tracking responds faster and follows natural transitions; consonants may still produce outliers.'
+        :'Experimental filtering suppresses some consonant noise and outliers, but can respond more slowly or miss short vowels.';
+      if(state.running)$('micDetail').textContent='Mode switched · Please try your vowel again';
+    }
+    $('modeClassic').addEventListener('click',()=>setTrackingMode('classic'));
+    $('modeStable').addEventListener('click',()=>setTrackingMode('stable'));
+    $('startBtn').addEventListener('click',()=>state.running?stopMic():startMic());
+    $('freezeBtn').addEventListener('click',()=>{if(!state.running)return;state.frozen=!state.frozen;if(profiling&&state.frozen)profiling.pause(); $('freezeBtn').textContent=state.frozen?'Resume Display':'Pause Display';setStatus(state.frozen?'frozen':'live',state.frozen?'Display paused':'Listening live');$('micDetail').textContent=state.frozen?'Display paused · Microphone remains connected':'Listening · Please sustain a vowel';});
+    $('clearBtn').addEventListener('click',()=>{state.trail=[];});
+    $('smooth').addEventListener('input',e=>{$('smoothOut').textContent=Number(e.target.value)<30?'Fast':Number(e.target.value)>75?'Very smooth':'Medium';});
+    $('sensitivity').addEventListener('input',e=>{$('sensitivityOut').textContent=e.target.value+'%';});
+    function getProfile(id){return PROFILES.find(p=>p.id===id)||PROFILES[0];}
+    function renderProfile(){
+      const A=getProfile(state.profileA),B=getProfile(state.profileB);
+      const setA=new Set(A.vowels),setB=new Set(B.vowels);
+      const onlyA=A.vowels.filter(s=>!setB.has(s));
+      const shared=A.vowels.filter(s=>setB.has(s));
+      const onlyB=B.vowels.filter(s=>!setA.has(s));
+      $('profileAName').textContent=A.label;
+      $('profileBName').textContent=B.label;
+      $('profileName').textContent=A.label+' ↔ '+B.label;
+      $('profileCount').textContent='Shared '+shared.length+' labels'+' qualities';
+      $('profileDescription').textContent='Only matching broad IPA symbols are counted as shared; US /ɛ/ and UK /e/ may refer to the same DRESS lexical set. Symbols do not show acoustic identity, and language choices do not change microphone recognition.';
+      const fill=(id,phones,kind)=>{
+        const el=$(id);el.replaceChildren();
+        if(!phones.length){const empty=document.createElement('span');empty.className='phoneme-empty';empty.textContent='—';el.appendChild(empty);return;}
+        for(const phone of phones){
+          const chip=document.createElement('span');chip.className='phoneme-chip'+(kind==='a'?'':kind==='b'?' b':' shared');
+          chip.textContent=phone;chip.title='IPA vowel quality '+phone;el.appendChild(chip);
+        }
+      };
+      fill('onlyAInventory',onlyA,'a');fill('sharedInventory',shared,'shared');fill('onlyBInventory',onlyB,'b');
+      $('onlyACount').textContent=onlyA.length;$('sharedCount').textContent=shared.length;$('onlyBCount').textContent=onlyB.length;
+      const explain=(title,p)=>p.id==='none'?title+': No highlighting selected.':title+' · '+p.name+': '+p.description+' '+p.extras+(p.optional.length?' (accent-dependent qualities: '+p.optional.map(s=>'/'+s+'/').join(', ')+'; indicated by dashed rings.)':'');
+      $('profileExtras').textContent=explain('A',A)+'\n'+explain('B',B);
+      for(const [side,profileId] of [['A',A.id],['B',B.id]]){
+        for(const btn of $('profile'+side+'Buttons').children){
+          const selected=btn.dataset.profile===profileId;
+          btn.classList.toggle('active-'+side.toLowerCase(),selected);
+          btn.setAttribute('aria-pressed',String(selected));
+        }
+      }
+    }
+    for(const side of ['A','B']){
+      for(const profile of PROFILES){
+        const btn=document.createElement('button');btn.type='button';btn.className='profile-btn';
+        btn.dataset.profile=profile.id;btn.textContent=profile.label;
+        btn.addEventListener('click',()=>{
+          if(side==='A')state.profileA=profile.id;else state.profileB=profile.id;
+          renderProfile();
+        });
+        $('profile'+side+'Buttons').appendChild(btn);
+      }
+    }
+    renderProfile();
+    const referencePlayer=window.VowelScopeReference.create({document,locale:'en',beforePlay(){if(state.running||capturePending)void stopMic();}});
+    const targets=VOWELS.map(v=>v.symbol);
+    for(const symbol of targets){
+      const el=document.createElement('button');el.type='button';el.className='target';el.textContent=symbol;
+      el.setAttribute('aria-label','Show tongue position and reference sound for '+symbol);el.setAttribute('aria-pressed','false');el.setAttribute('aria-controls','referenceDemo');
+      el.addEventListener('click',()=>{
+        state.target=symbol;
+        for(const child of $('targetButtons').children){const active=child.textContent===symbol;child.classList.toggle('active',active);child.setAttribute('aria-pressed',String(active));}
+        const v=VOWELS.find(item=>item.symbol===symbol);
+        $('targetDescription').textContent=`[ ${v.symbol} ] · ${v.name} · Schematic F1 ${v.f1} Hz / F2 ${v.f2} Hz. These are not measurements of the recording or pronunciation scores.`;
+        referencePlayer.select(symbol);
+      });
+      $('targetButtons').appendChild(el);
+    }
+    window.addEventListener('pagehide',()=>{referencePlayer.dispose();void stopMic();});
+    if(labMode)$('labPanel').style.display='block';
+    requestAnimationFrame(frame);
+  })();
+  </script>
+</body>
+</html>
